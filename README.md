@@ -1,4 +1,4 @@
-# Passive Shimming of permanent magnet constructions
+# Passive shimming of permanent magnet constructions
 Provides passive shimming software and shim tray design outputs
 
 This implementation refactors and builds on the passive shimming demonstrations at 1 and 2.
