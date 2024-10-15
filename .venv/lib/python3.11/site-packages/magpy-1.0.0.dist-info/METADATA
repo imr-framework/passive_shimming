@@ -1,0 +1,21 @@
+Metadata-Version: 2.1
+Name: magpy
+Version: 1.0.0
+Summary: Magnus based time-integration for spins and qubits under a magnetic field.
+Author-email: Danny Goodacre <djrg20@bath.ac.uk>, Pranav Singh <ps2106@bath.ac.uk>
+License: MIT
+Project-URL: homepage, https://github.com/brownadder/magpy
+Project-URL: repository, https://github.com/brownadder/magpy
+Keywords: quantum,spin,Magnus
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Topic :: Scientific/Engineering :: Physics
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+License-File: LICENSE.md
+Requires-Dist: numpy (>=1.16.5)
+Requires-Dist: scipy (>=1.7)
+
+# magpy
+Magnus based time-integration for spins and qubits under a magnetic field. Please see the example Jupyter notebook for a walkthrough of Magpy's functionality.
