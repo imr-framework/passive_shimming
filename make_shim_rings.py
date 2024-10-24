@@ -4,13 +4,15 @@ import magpylib as magpy
 
 class shim_ring:
     # initiates an instance of the shim ring
-    def __init__(self, diameter, magnet_dims, height, num_magnets, magnetization):
+    def __init__(self, diameter, magnet_dims, height, num_magnets, magnetization, skip_center_magnets = False):
         self.diameter = diameter
         self.magnet_dims = magnet_dims
         self.height = height
         self.num_magnets = num_magnets
         self.display_collection = False
         self.magnetization = magnetization
+        self.skip_center_magnets = skip_center_magnets
+        self.polarization = [0, 0, 1.2] # for N45 it is 1.2T or 1200 Gauss
         
     def get_geometry_params(self):
         # self.num_rings = int(self.diameter / (np.sqrt(self.magnet_dims[0] ** 2  +  self.magnet_dims[1] ** 2)) / 2)
@@ -23,11 +25,12 @@ class shim_ring:
         shim_ring_magnets = magpy.Collection()
         total_num_magnets_ring=0
         for r in range(self.num_rings):
-            if r == 0:
+            if self.skip_center_magnets is False and r == 0:
                 cube = magpy.magnet.Cuboid(
                 dimension=self.magnet_dims,
                 position=(0 + (self.magnet_dims[0] * 0.5),0,self.height),
-                magnetization=self.magnetization
+                # magnetization=self.magnetization
+                polarization=self.polarization
                 )
                 shim_ring_magnets.add(cube)
                 
@@ -35,7 +38,8 @@ class shim_ring:
                 dimension=self.magnet_dims,
                 # magnetization=self.magnetization,
                 position=(0 - (self.magnet_dims[0] * 0.5),0,self.height),
-                magnetization=self.magnetization
+                # magnetization=self.magnetization
+                polarization=self.polarization
                 )
                 shim_ring_magnets.add(cube)
                 num_magnets_ring = 2
@@ -52,7 +56,8 @@ class shim_ring:
                     cube = magpy.magnet.Cuboid(
                         dimension=self.magnet_dims,
                         position=(radius,0,self.height),
-                        magnetization=self.magnetization,
+                        # magnetization=self.magnetization,
+                        polarization=self.polarization,
                         style_color='red',
                     )
                     cube.rotate_from_angax(a, 'z', anchor=0)
@@ -64,11 +69,11 @@ class shim_ring:
         if self.display_collection is True:
             shim_ring_magnets.show(backend='matplotlib')
             
-def make_shim_ring_template(diameter, magnet_dims, heights, num_magnets, magnetization):
+def make_shim_ring_template(diameter, magnet_dims, heights, num_magnets, magnetization,skip_center_magnets=False):
     shim_rings_template = magpy.Collection(style_label='magnets')
     for height in heights:
         shim_ring_ind = shim_ring(diameter=diameter, magnet_dims=magnet_dims, height =height,
-                            num_magnets = num_magnets, magnetization = magnetization)
+                            num_magnets = num_magnets, magnetization = magnetization, skip_center_magnets=skip_center_magnets)
         shim_ring_ind.get_geometry_params() # can improve this to make it more flexible and dynamic - include update methods TODO
         shim_ring_ind.make_magnet_collection()
 

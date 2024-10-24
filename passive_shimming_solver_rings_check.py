@@ -10,9 +10,12 @@ from pymoo.optimize import minimize
 from pymoo.core.population import Population
 from pymoo.core.evaluator import Evaluator
 import pickle
+import matplotlib.pyplot as plt
 
 # Read magnetic field and positions
-fname = './data/Characterization in the office/Exp_1b (with steel yokes) 30 30 30 2.npy'
+# fname = './data/Shim_trays_30mm_dsv.npy'
+# fname = '/Volumes/SD_US/fmr/bat x-tion/Exp_3_2024927.npy'
+fname = './data/Exp_100_2024917.npy'
 data = np.load(fname)
 resolution = 2 #mm
 x, y, z, B = get_field_pos(data)
@@ -34,6 +37,7 @@ z_magpy = -y # height
 display_scatter_3D(x_magpy, y_magpy, z_magpy, B, center=False, title = 'Measured B field')
 display_scatter_3D(x_magpy, y_magpy, z_magpy, B - np.mean(B), center=False, title = 'Measured B field - mean sub')
 print(Fore.RED + 'del B0: ' + str((np.max(B) - np.min(B)) * 1e3) + 'mT')
+print(Fore.GREEN + 'Mean B0: ' + str((np.mean(B)) * 1e3) + 'mT')
 print(Fore.CYAN + 'Off-resonance indicator before shimming is:' + str(cost_fn(B)) + 'DelB/B * 1000') # What decimal should we round off to? 1mT - 85kHz
 pos = np.zeros((x.shape[0], 3))
 pos[:, 0] = x_magpy
@@ -60,47 +64,18 @@ delta_B0_tol = 1 * 1e-3 # Tesla
 
 # Create lower shim tray
 shim_rings_template = make_shim_ring_template(diameter, magnet_dims = (magnet_dims_x, magnet_dims_y, magnet_dims_z), 
-                                              heights = heights, num_magnets=num_magnets, magnetization=magnetization)
+                                              heights = heights, num_magnets=num_magnets, magnetization=magnetization,skip_center_magnets=False)
 shim_rings_template.show(backend='matplotlib')
 write2stl(shim_rings_template, stl_filename ='./data/init10_arrangement.stl')
-# magpy.show(shim_rings_template, dsv_sensors)
+magpy.show(shim_rings_template, dsv_sensors)
 
 
 #
 B0_computed = get_magnetic_field(magnets=shim_rings_template, sensors=dsv_sensors, axis = 2)
 display_scatter_3D(x_magpy, y_magpy, z_magpy, B0_computed, center=False, title = 'B computed from shim tray template')
-display_scatter_3D(x_magpy, y_magpy, z_magpy, B0_computed + B, center=False, title = 'B + B0_computed')
 
-# Solve for the homogeneity constraints using an optimization problem - explore constraints, free geometry in a single plane, etc.
-print(Fore.YELLOW + 'Shim search starts ...')
-del_B_init = np.mean(B) - B
-pop_size = 500 # Size of the population
-shim_trays_optimize = shimming_problem(B_measured=B, tol=delta_B0_tol, 
-                                       shims=shim_rings_template, sensors=dsv_sensors,
-                                       num_var=2, magnetization=magnetization)
-
-algorithm = MixedVariableGA(pop_size=pop_size, survival=RankAndCrowdingSurvival())
-res = minimize(shim_trays_optimize,
-                algorithm, ('n_gen', 20),
-                verbose=True)
-
-# Get the locations where the magnets need to be present and make a new collection
-
-shim_rings_optimized = load_magnets_with_rot(res.X, shim_rings_template, 2 ,magnetization=magnetization)
-shim_rings_optimized.show()
-write2stl(shim_rings_optimized, stl_filename ='./data/shims_slots.stl')
-B_shimmed = get_magnetic_field(shim_rings_optimized, dsv_sensors, axis = 2)
-B_total = B + B_shimmed 
-print(Fore.CYAN + 'Off-resonance indicator after shimming is:' + str(cost_fn(B_total)) + ' DelB/B * 1000') # What decimal should we round off to? 1mT - 85kHz
-display_scatter_3D(x_magpy, y_magpy, z_magpy, B_total, center=False, title='B0 after shimming')
-print(Fore.RED + 'del B0_shimmed: ' + str((np.max(B_total) - np.min(B_total)) * 1e3) + 'mT')
-
-# Get the shimmed field and show a subplot of measured and shimmed field
-print(Fore.RED + 'Done shimming!')
-
-with open('./data/magnet_collection_shims.pkl', 'wb') as file:
-    pickle.dump(shim_rings_optimized, file)
 # Figure how to export this to CAD
-with open('./data/magnet_collection_shims.pkl', 'rb') as file:
-    shim_rings_optimized_read = pickle.load(file)
-shim_rings_optimized_read.show()
+plt.plot(B, label = 'Measured')
+plt.plot(B0_computed, label = 'Simulated')
+plt.legend()
+plt.show()

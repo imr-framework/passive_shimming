@@ -20,7 +20,7 @@ def get_field_pos(data):
 
 
 
-def display_scatter_3D(x, y, z, B, center:bool=False, title:str=None):
+def display_scatter_3D(x, y, z, B, center:bool=False, title:str=None, clim_plot = None):
     
     if center is True:
         x = (x - 0.5 *  np.max(x)) 
@@ -31,16 +31,30 @@ def display_scatter_3D(x, y, z, B, center:bool=False, title:str=None):
     ax = fig.add_subplot(111, projection='3d')
     img = ax.scatter(x, y, z, c=B, cmap=plt.jet())
     plt.title(title)
-    fig.colorbar(img)
+    plt.colorbar(img)
+    # cbar = fig.colorbar(img)
+    # if clim_plot is None:
+    #     cbar.ax.set_ylim(0.95 * np.mean(B),1.05 * np.mean(B))
+    # else:
+    #     cbar.ax.set_ylim(clim_plot[0],clim_plot[1])
     plt.show()
 
+def scale_wrt_meas(B_eff, scaling_factor):
+        weights =  (B_eff - np.min(B_eff)) /(np.max(B_eff) - np.min(B_eff))
+        weights2 = 1 - weights
+        # scaling_factor2 = 0.5 * scaling_factor
+        B_eff_scaled = B_eff * (1 - (weights * 0.15 * scaling_factor)) 
+        B_eff_scaled = B_eff_scaled * (1 + (weights2 * scaling_factor))
+        return B_eff_scaled
 
-def get_magnetic_field(magnets, sensors, axis = None):
+
+def get_magnetic_field(magnets, sensors, axis = None, scaling_factor = 0.25):
     B = sensors.getB(magnets)
     if axis is None:
         B_eff = np.linalg.norm(B, axis=1)
     else:
-        B_eff = np.squeeze(B[:, axis])
+        B_eff = np.squeeze(B[:, axis]) 
+        B_eff = scale_wrt_meas(B_eff, scaling_factor)
     return B_eff
     
 def load_magnets_in_rings(x, shims, num_var, magnetization):

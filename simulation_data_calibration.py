@@ -1,9 +1,9 @@
 import numpy as np
 import magpylib as magpy
 from make_shim_rings import make_shim_ring_template
-from utils import get_field_pos, display_scatter_3D, get_magnetic_field, load_magnets_in_rings
+from utils import get_field_pos, display_scatter_3D, get_magnetic_field, load_magnets_in_rings, filter_dsv
 from colorama import Style, Fore
-from target_B0_2_shim_locations_v2 import shimming_problem
+from target_B0_2_shim_locations_rot import shimming_problem
 from pymoo.core.mixed import MixedVariableMating, MixedVariableGA, MixedVariableSampling, MixedVariableDuplicateElimination
 from pymoo.algorithms.moo.nsga2 import NSGA2, RankAndCrowdingSurvival
 from pymoo.optimize import minimize
@@ -12,7 +12,9 @@ from pymoo.core.evaluator import Evaluator
 import matplotlib.pyplot as plt
 
 # Read magnetic field and positions
-fname = './fmr_data/calibration_jig/calibration_data.npy'
+# fname = './data/calibration_data.npy'
+fname = './data/Characterization in the office/Exp_2 (shim magnets characterization) 1 8 8 1.npy'
+# fname = './data/calibration_data.npy'
 data = np.load(fname)
 resolution = 2 #mm
 x, y, z, B = get_field_pos(data)
@@ -21,17 +23,19 @@ x = (np.float64(x).transpose() - 0.5 * np.max(x))  * 1e-3 #conversion to m
 y = (np.float64(y).transpose() - 0.5 * np.max(y)) * 1e-3 #conversion to m
 z = (np.float64(z).transpose() - 0.5 * np.max(z)) * 1e-3 #conversion to m
 B = B * 1e-3 # mT to T
+dsv_radius = 15 * 1e-3 # m
+x, y, z, B = filter_dsv(x, y, z, B, dsv_radius = dsv_radius)
 
 # Map robot space to magpy space
 x_magpy = z # length
 y_magpy = x # depth
 z_magpy = -y # height
 
-
-
 # Display measured field as scattered data - plot3
 display_scatter_3D(x_magpy, y_magpy, z_magpy, B, center=False)
-print(Fore.CYAN + 'Mean B0 before shimming is:' + str(np.round(np.mean(B),2)) + ' mT') # What decimal should we round off to? 1mT - 85kHz
+
+print(Fore.RED + 'del B0: ' + str((np.max(B) - np.min(B)) * 1e3) + 'mT')
+print(Fore.CYAN + 'Mean B0 before shimming is:' + str((np.mean(B)*1e3)) + ' mT') # What decimal should we round off to? 1mT - 85kHz
 pos = np.zeros((x.shape[0], 3))
 pos[:, 0] = x_magpy
 pos[:, 1] = y_magpy
@@ -53,7 +57,7 @@ position1 = np.multiply([0, 0, 8 + (0.5 * magnet_dims_z)], 1e-3)
 
 # Make the jig 
 steps = 100
-mag_vect = np.linspace(6000*1e2,9000*1e2,steps)
+mag_vect = np.linspace(6000*1e2,15000*1e2,steps)
 B_diff =[]
 for ind in range(len(mag_vect)):
     cube = magpy.magnet.Cuboid(
@@ -72,15 +76,7 @@ for ind in range(len(mag_vect)):
 best_fit = np.where(B_diff == np.min(np.abs(B_diff)))
 print(best_fit)
 print(mag_vect[best_fit])
-    # Figure how to export this to CAD
 
-    # plt.plot(B, label = 'Measured')
-    # plt.plot(B_sim, label = 'Simulated')
-    # plt.legend()
-    # plt.show()
-
-    # Visualize differences
-    # display_scatter_3D(x_magpy, y_magpy, z_magpy, (B - B_sim), center=False)
 
 
 
