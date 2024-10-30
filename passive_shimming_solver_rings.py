@@ -12,7 +12,7 @@ from pymoo.core.evaluator import Evaluator
 import pickle
 
 # Read magnetic field and positions
-fname = './data/Characterization in the office/Exp_1b (with steel yokes) 30 30 30 2.npy'
+fname = './data/a Exp_36_36_36_2.npy'
 data = np.load(fname)
 resolution = 2 #mm
 x, y, z, B = get_field_pos(data)
@@ -22,7 +22,7 @@ y = (np.float64(y).transpose() - 0.5 * np.max(y)) * 1e-3 #conversion to m
 z = (np.float64(z).transpose() - 0.5 * np.max(z)) * 1e-3 #conversion to m
 B = B * 1e-3 # mT to T
 
-dsv_radius = 15 * 1e-3 # m
+dsv_radius = 16 * 1e-3 # m
 x, y, z, B = filter_dsv(x, y, z, B, dsv_radius = dsv_radius)
 
 # Map robot space to magpy space
@@ -81,7 +81,7 @@ shim_trays_optimize = shimming_problem(B_measured=B, tol=delta_B0_tol,
 
 algorithm = MixedVariableGA(pop_size=pop_size, survival=RankAndCrowdingSurvival())
 res = minimize(shim_trays_optimize,
-                algorithm, ('n_gen', 20),
+                algorithm, ('n_gen', 10),
                 verbose=True)
 
 # Get the locations where the magnets need to be present and make a new collection
