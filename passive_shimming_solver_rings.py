@@ -74,14 +74,14 @@ display_scatter_3D(x_magpy, y_magpy, z_magpy, B0_computed + B, center=False, tit
 # Solve for the homogeneity constraints using an optimization problem - explore constraints, free geometry in a single plane, etc.
 print(Fore.YELLOW + 'Shim search starts ...')
 del_B_init = np.mean(B) - B
-pop_size = 100 # Size of the population
+pop_size = 5000 # Size of the population
 shim_trays_optimize = shimming_problem(B_measured=B, tol=delta_B0_tol, 
                                        shims=shim_rings_template, sensors=dsv_sensors,
                                        num_var=2, magnetization=magnetization)
 
 algorithm = MixedVariableGA(pop_size=pop_size, survival=RankAndCrowdingSurvival())
 res = minimize(shim_trays_optimize,
-                algorithm, ('n_gen', 20),
+                algorithm, ('n_gen', 250),
                 verbose=True)
 
 # Get the locations where the magnets need to be present and make a new collection
