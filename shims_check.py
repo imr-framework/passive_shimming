@@ -38,7 +38,7 @@ z_magpy = -y # height
 display_scatter_3D(x_magpy, y_magpy, z_magpy, B, center=False, title = 'Measured B field')
 display_scatter_3D(x_magpy, y_magpy, z_magpy, B - np.mean(B), center=False, title = 'Measured B field - mean sub')
 print(Fore.RED + 'del B0: ' + str((np.max(B) - np.min(B)) * 1e3) + 'mT')
-print(Fore.CYAN + 'Off-resonance indicator before shimming is:' + str(cost_fn(B)) + 'DelB/B * 1000') # What decimal should we round off to? 1mT - 85kHz
+print(Fore.CYAN + 'Off-resonance indicator before shimming is:' + str(np.round(cost_fn(B),2)) + ' DelB/B * 1000') # What decimal should we round off to? 1mT - 85kHz
 pos = np.zeros((x.shape[0], 3))
 pos[:, 0] = x_magpy
 pos[:, 1] = y_magpy
@@ -82,4 +82,6 @@ display_scatter_3D(x_magpy, y_magpy, z_magpy, B_total, center=False, title = 'B 
 plt.show()
 print('Mean value of B_shimmed:' + str(np.mean(B_total)))
 print(Fore.RED + 'del B0: ' + str((np.max(B_total) - np.min(B_total)) * 1e3) + 'mT')
-print(Fore.CYAN + 'Off-resonance indicator before shimming is:' + str(cost_fn(B_total)) + 'DelB/B * 1000') # What decimal should we round off to? 1mT - 85kHz
+print(Fore.CYAN + 'Off-resonance indicator before shimming is:' + str(np.round(cost_fn(B_total),2)) + ' DelB/B * 1000') # What decimal should we round off to? 1mT - 85kHz
+
+print('Percentage reduction in inhomogeneity:' + str(100 - np.round((np.max(B_total) - np.min(B_total)) / (np.max(B) - np.min(B)) * 100, 2)) + '%')
