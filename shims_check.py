@@ -85,3 +85,28 @@ print(Fore.RED + 'del B0: ' + str((np.max(B_total) - np.min(B_total)) * 1e3) + '
 print(Fore.CYAN + 'Off-resonance indicator before shimming is:' + str(np.round(cost_fn(B_total),2)) + ' DelB/B * 1000') # What decimal should we round off to? 1mT - 85kHz
 
 print('Percentage reduction in inhomogeneity:' + str(100 - np.round((np.max(B_total) - np.min(B_total)) / (np.max(B) - np.min(B)) * 100, 2)) + '%')
+
+# Visualize the B field from the shim trays once they are mapped
+shim_field_mapped = True
+if shim_field_mapped is True:
+    fname_shim = './data/Shim_tray_field_32_2mm.npy'
+    data_shim = np.load(fname_shim)
+    resolution = 2 #mm
+    x, y, z, B_shim = get_field_pos(data_shim)
+    print(Fore.GREEN + 'Done reading data')
+    x = (np.float64(x).transpose() - 0.5 * np.max(x))  * 1e-3 #conversion to m
+    y = (np.float64(y).transpose() - 0.5 * np.max(y)) * 1e-3 #conversion to m
+    z = (np.float64(z).transpose() - 0.5 * np.max(z)) * 1e-3 #conversion to m
+    B_shim = -1 * B_shim * 1e-3 # mT to T
+    print('Mean value of B shim:' + str(np.mean(B_shim)))
+    dsv_radius = 16 * 1e-3 # m
+    x, y, z, B_shim = filter_dsv(x, y, z, B_shim, dsv_radius = dsv_radius)
+
+    # Map robot space to magpy space
+    x_magpy = z # length
+    y_magpy = x # depth
+    z_magpy = -y # height
+
+    # Display measured field as scattered data - plot3
+    display_scatter_3D(x_magpy, y_magpy, z_magpy, B_shim, center=False, title = 'Measured B shim field')
+    display_scatter_3D(x_magpy, y_magpy, z_magpy, B + B_shim, center=False, title = 'Predicted total field - mapped')
