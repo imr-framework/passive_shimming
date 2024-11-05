@@ -52,7 +52,7 @@ print(Fore.GREEN + 'Done creating position sensors')
 #---------------------------------------------------------
 magnet_dims_x =  6.35 *1e-3 # m
 magnet_dims_y =   6.35 *1e-3 # m
-magnet_dims_z =  0.5 *  6.35 *1e-3 # m
+magnet_dims_z =   6.35 *1e-3 # m
 diameter = 152.4 * 1e-3 # m
 mag_x = 0
 mag_z = 8 * 1e5
