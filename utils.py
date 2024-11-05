@@ -168,9 +168,10 @@ def cost_fn(B_total):
     f = 1e3 * (np.max(B_total) - np.min(B_total)) /(np.mean(B_total))
     return f
 
-def write2stl(mag_collection_template, stl_filename:str='output.stl'):
+def write2stl(mag_collection_template, stl_filename:str='output.stl', debug = False):
     # Get the trace of each cuboid
     init = 0
+    faces = 0
     if (len(mag_collection_template.children)) > 2: # TODO: better condition check single collection, no multiple trays
         for child1 in range(len(mag_collection_template.children)): 
             cube_magnet = mag_collection_template.children[child1]
@@ -185,7 +186,7 @@ def write2stl(mag_collection_template, stl_filename:str='output.stl'):
             if init > 0:
                 cube_mesh_all = mesh.Mesh(np.concatenate([cube_mesh_all.data, cube_mesh.data]))
             else:
-                init = 1
+                init = 1 
                 cube_mesh_all = cube_mesh
     else:
         for child1 in range(len(mag_collection_template.children)):   
@@ -193,19 +194,31 @@ def write2stl(mag_collection_template, stl_filename:str='output.stl'):
                 cube_magnet = mag_collection_template.children[child1].children[child2]
                 mag_cuboid_trace = mag_collection_template.children[child1].children[child2].get_trace()
 
-                vertices = np.array([mag_cuboid_trace['x'], mag_cuboid_trace['y'], mag_cuboid_trace['z']]).T + cube_magnet.orientation.apply(cube_magnet.position.T)
+                vertices = np.array([mag_cuboid_trace['x'], mag_cuboid_trace['y'], mag_cuboid_trace['z']]).T  + cube_magnet.orientation.apply(cube_magnet.position.T)
                 faces = np.array([mag_cuboid_trace['i'], mag_cuboid_trace['j'], mag_cuboid_trace['k']]).T
-                vertices_rotated = cube_magnet.orientation.apply(vertices)
+                vertices_rotated = cube_magnet.orientation.apply(vertices) * 1e3 # because stl printing is in mm
+        
+                if debug:
+                    rot_matrix = cube_magnet.orientation.as_matrix()
+                    euler_angles = R.from_matrix(rot_matrix).as_euler('xyz', degrees=True) 
+                    print(euler_angles)
+                    print(cube_magnet.position)
+
+                        
                 cube_mesh = mesh.Mesh(np.zeros(faces.shape[0], dtype=mesh.Mesh.dtype))
                 for i, f in enumerate(faces):
                     for j in range(3):
                         cube_mesh.vectors[i][j] = vertices_rotated[f[j]] * 1e3
+                        
                 if init > 0:
                     cube_mesh_all = mesh.Mesh(np.concatenate([cube_mesh_all.data, cube_mesh.data]))
                 else:
                     init = 1
                     cube_mesh_all = cube_mesh
-        
+                if debug:
+                    cube_mesh_all.save(stl_filename)
+                
+     
     # Save the STL file
     cube_mesh_all.save(stl_filename)
              

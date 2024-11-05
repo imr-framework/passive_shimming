@@ -1,7 +1,7 @@
 import numpy as np
 import magpylib as magpy
 from make_shim_rings import make_shim_ring_template
-from utils import get_field_pos, display_scatter_3D, get_magnetic_field, filter_dsv, cost_fn, undo_symmetry_8x_compression
+from utils import get_field_pos, display_scatter_3D, get_magnetic_field, filter_dsv, cost_fn, undo_symmetry_8x_compression,write2stl
 from colorama import Style, Fore
 from target_B0_2_shim_locations_rot import shimming_problem
 from pymoo.core.mixed import MixedVariableMating, MixedVariableGA, MixedVariableSampling, MixedVariableDuplicateElimination
@@ -17,7 +17,7 @@ import matplotlib
 #---------------------------------------------------------
 # Read magnetic field and positions from field mapping robot
 #---------------------------------------------------------
-fname = './data/b Exp_36 36 36 2.npy'
+fname = './data/Exp_21_20241012.npy'
 data = np.load(fname)
 resolution = 2 #mm
 x, y, z, B = get_field_pos(data)
@@ -27,7 +27,7 @@ y = (np.float64(y).transpose() - 0.5 * np.max(y)) * 1e-3 #conversion to m
 z = (np.float64(z).transpose() - 0.5 * np.max(z)) * 1e-3 #conversion to m
 B = B * 1e-3 # mT to T
 print('Mean value of B:' + str(np.mean(B)))
-dsv_radius = 18 * 1e-3 # m
+dsv_radius = 16 * 1e-3 # m
 x, y, z, B = filter_dsv(x, y, z, B, dsv_radius = dsv_radius, symmetry=False)
 
 B_orig = B
@@ -62,7 +62,7 @@ shim_rings_optimized_read.show(background=True, backend='matplotlib')
 #---------------------------------------------------------
 shim_rings_optimized_uncompressed = undo_symmetry_8x_compression(shim_rings_optimized_read)
 shim_rings_optimized_uncompressed.show(background=True, backend='matplotlib')
-
+# write2stl(shim_rings_optimized_read, stl_filename ='./data/init10_arrangement_dia_'+str(152.4 * 1e3)+ '.stl', debug=True)
 # ---------------------------------------------------------
 # Compute the B field from the optimized shim tray
 # ---------------------------------------------------------

@@ -14,7 +14,7 @@ import pickle
 #---------------------------------------------------------
 # Read magnetic field and positions
 #---------------------------------------------------------
-fname = './data/b Exp_36 36 36 2.npy'
+fname = './data/Exp_21_20241012.npy'
 data = np.load(fname)
 resolution = 2 #mm
 x, y, z, B = get_field_pos(data)
@@ -24,7 +24,7 @@ y = (np.float64(y).transpose() - 0.5 * np.max(y)) * 1e-3 #conversion to m
 z = (np.float64(z).transpose() - 0.5 * np.max(z)) * 1e-3 #conversion to m
 B = B * 1e-3 # mT to T
 
-dsv_radius = 18 * 1e-3 # m
+dsv_radius = 32 * 1e-3 # m
 x, y, z, B = filter_dsv(x, y, z, B, dsv_radius = dsv_radius, symmetry = True)
 
 # Map robot space to magpy space
@@ -52,27 +52,29 @@ print(Fore.GREEN + 'Done creating position sensors')
 #---------------------------------------------------------
 magnet_dims_x =  6.35 *1e-3 # m
 magnet_dims_y =   6.35 *1e-3 # m
-magnet_dims_z =  0.5 * 6.35 *1e-3 # m
-diameter = 154 * 1e-3 # m
+magnet_dims_z =   6.35 *1e-3 # m
+diameter = 152.4 * 1e-3 # m
 mag_x = 0
 mag_z = 8 * 1e5
 mag_y = 0
-magnetization = [mag_x, mag_y, mag_z] # 1.34, 0.7957
+magnetization = [mag_x, mag_y, mag_z] # 1.34, 0.7957 
 heights = np.array([-41.325, 41.325]) * 1e-3
 # heights = np.array([-150.325, 150.325]) * 1e-3
 num_magnets = 100
-delta_B0_tol = 1 * 1e-3 # Tesla
+delta_B0_tol = 1 * 1e-3 # Tesla 
 
 # Create lower shim tray
 shim_rings_template_stl = make_shim_ring_template(diameter, magnet_dims = (magnet_dims_x, magnet_dims_y, magnet_dims_z), 
-                                              heights = heights, num_magnets=num_magnets, magnetization=magnetization, symmetry = False,
+                                              heights = [heights[0]], num_magnets=num_magnets, magnetization=magnetization, symmetry = False,
                                               style_color='red')
-write2stl(shim_rings_template_stl, stl_filename ='./data/init10_arrangement_dia_'+str(diameter * 1e3)+ '.stl')
+shim_rings_template_stl.show(backend='matplotlib')
+
+write2stl(shim_rings_template_stl, stl_filename ='./data/init10_arrangement_dia_'+str(diameter * 1e3)+ '.stl', debug=False)
 shim_rings_template = make_shim_ring_template(diameter, magnet_dims = (magnet_dims_x, magnet_dims_y, magnet_dims_z), 
                                               heights = heights, num_magnets=num_magnets, magnetization=magnetization, symmetry = True,
                                               style_color='red')
 shim_rings_template.show(backend='matplotlib')
-# write2stl(shim_rings_template, stl_filename ='./data/init10_arrangement.stl')
+# write2stl(shim_rings_template, stl_filename ='./data/init10_arrangement_symm_dia_'+str(diameter * 1e3)+ '.stl', debug=True)
 # magpy.show(shim_rings_template, dsv_sensors)
 
 
