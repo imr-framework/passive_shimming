@@ -110,17 +110,18 @@ def load_magnets_in_rings_pol(x, shims):
             
     return shim_ring_optimized
 
-def load_magnets_with_rot(x, shims, num_var, magnetization):
+def load_magnets_with_rot(x, shims, num_var, magnetization, style_color = 'green'):
     binary_placement_each_mag=np.array([x[f"x{child:02}"] for child in range(0, num_var * len(shims.children) * len(shims.children[0].children))]) # all children should have same magnet positions to begin with
     shim_ring_optimized = magpy.Collection()
     child_offset = 0
+    num_trays = len(shims.children)
     for child1 in range(len(shims.children)):
         if child1 > 0:
             child_offset += (len(shims.children[child1-1])) 
         for child2 in range(len(shims.children[child1].children)):
             
             mag = binary_placement_each_mag[child2 + child_offset]
-            rot = binary_placement_each_mag[child2 + child_offset + num_var * len(shims.children[child1].children)]
+            rot = binary_placement_each_mag[child2 + child_offset + num_trays * len(shims.children[child1].children)] #TODO: check for consistency
             
             if mag == True:
                 rot_orig = shims.children[child1].children[child2].orientation
@@ -128,23 +129,33 @@ def load_magnets_with_rot(x, shims, num_var, magnetization):
                 rot_pol = R.from_euler('zyx',[0, 0, zrot],degrees=True)
                 rot_total = rot_orig * rot_pol
                 shim_magnet = shims.children[child1].children[child2].copy(orientation = rot_total) #
+                shim_magnet.style_color = style_color
                 shim_ring_optimized.add(shim_magnet)
                 
     return shim_ring_optimized
 
-def filter_dsv(x, y, z, B, dsv_radius):
+def filter_dsv(x, y, z, B, dsv_radius, symmetry = True):
     x_new = []
     y_new = []
     z_new = []
     B_new = []
     
     for point in range(x.shape[0]):
-        dist = np.sqrt (x[point] ** 2 + y[point] **2 + z[point]** 2)
-        if dist < dsv_radius:
-            x_new.append(x[point])
-            y_new.append(y[point])
-            z_new.append(z[point])
-            B_new.append(B[point])
+        if symmetry:
+            if x[point] >= 0 and y[point] >= 0 and z[point] >= 0:
+                dist = np.sqrt (x[point] ** 2 + y[point] **2 + z[point]** 2)
+                if dist < dsv_radius:
+                    x_new.append(x[point])
+                    y_new.append(y[point])
+                    z_new.append(z[point])
+                    B_new.append(B[point])
+        else:
+            dist = np.sqrt (x[point] ** 2 + y[point] **2 + z[point]** 2)
+            if dist < dsv_radius:
+                x_new.append(x[point])
+                y_new.append(y[point])
+                z_new.append(z[point])
+                B_new.append(B[point])
             
     x_new = np.array(x_new)
     y_new = np.array(y_new)
@@ -206,3 +217,72 @@ def write2stl(mag_collection_template, stl_filename:str='output.stl'):
     # # Subtract the magnet locations from a cylinder of 1.5 times the thickness of the magnet
     # print('To be implemented')
         
+def undo_symmetry_8x_compression(mag_collection):
+    mag_collection_uncompressed = magpy.Collection()
+    for child in range(len(mag_collection.children)):
+            # 0
+            shim_magnet = mag_collection.children[child].copy()
+            shim_magnet.position = shim_magnet.position * np.array([1, 1, 1])
+            shim_magnet.style_color = 'blue'
+            # shim_magnet.orientation = shim_magnet.orientation * rot_pol
+            mag_collection_uncompressed.add(shim_magnet)
+            # mag_collection_uncompressed.show(backend='matplotlib')
+            
+            # 90 degrees
+            shim_magnet = mag_collection.children[child].copy()
+            shim_magnet.position = shim_magnet.position * np.array([-1, 1, 1])
+            rot_pol = R.from_euler('zyx',[ 0, 0, 90],degrees=True)
+            # shim_magnet.orientation = shim_magnet.orientation * rot_pol
+            mag_collection_uncompressed.add(shim_magnet)
+            # mag_collection_uncompressed.show(backend='matplotlib')
+            
+            
+            # 180 degrees
+            shim_magnet = mag_collection.children[child].copy()
+            shim_magnet.position = shim_magnet.position * np.array([-1, -1, 1])
+            rot_pol = R.from_euler('zyx',[ 0, 0, 180],degrees=True)
+            # shim_magnet.orientation = shim_magnet.orientation * rot_pol
+            mag_collection_uncompressed.add(shim_magnet)
+            # mag_collection_uncompressed.show(backend='matplotlib')
+            
+            # 270 degrees
+            shim_magnet = mag_collection.children[child].copy()
+            shim_magnet.position = shim_magnet.position * np.array([1, -1, 1])
+            rot_pol = R.from_euler('zyx',[ 0, 0, 270],degrees=True)
+            # shim_magnet.orientation = shim_magnet.orientation * rot_pol
+            mag_collection_uncompressed.add(shim_magnet)
+            # mag_collection_uncompressed.show(backend='matplotlib')
+            
+            # ----------------------------------------------------------------
+            # Upper plate
+            # ----------------------------------------------------------------
+            # 0
+            shim_magnet = mag_collection.children[child].copy()
+            shim_magnet.position = shim_magnet.position * np.array([1, 1, -1])
+            shim_magnet.style_color = 'blue'
+            # shim_magnet.orientation = shim_magnet.orientation * rot_pol
+            mag_collection_uncompressed.add(shim_magnet)
+            
+            # 90 degrees - upper plate
+            shim_magnet = mag_collection.children[child].copy()
+            shim_magnet.position = shim_magnet.position * np.array([-1, 1, -1])
+            rot_pol = R.from_euler('zyx',[0, 90, 0],degrees=True)
+            # shim_magnet.orientation = shim_magnet.orientation * rot_pol
+            mag_collection_uncompressed.add(shim_magnet)
+            # mag_collection_uncompressed.show(backend='matplotlib')
+            
+            # 180 degrees
+            shim_magnet = mag_collection.children[child].copy()
+            shim_magnet.position = shim_magnet.position * np.array([-1, -1, -1])
+            # shim_magnet.orientation = shim_magnet.orientation * rot_pol
+            mag_collection_uncompressed.add(shim_magnet)
+            
+            # 270 degrees
+            shim_magnet = mag_collection.children[child].copy()
+            shim_magnet.position = shim_magnet.position * np.array([1, -1, -1])
+            # shim_magnet.orientation = shim_magnet.orientation * rot_pol
+            mag_collection_uncompressed.add(shim_magnet)
+            
+            
+            
+    return mag_collection_uncompressed

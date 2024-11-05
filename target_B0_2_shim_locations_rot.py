@@ -26,7 +26,8 @@ class shimming_problem(ElementwiseProblem):
         for child in range(0, num_slots): # binary choice if the magnet is going to be on or off - for the upper and lower rings so 2 * len
             vars[f"x{child:02}"] = Binary()
         for child in range(num_slots, 2 * num_slots): #2nd variable - remove hardcoding TODO
-            vars[f"x{child:02}"] = Choice(options=list(np.r_[0:2*np.pi:np.pi/2]))
+            # vars[f"x{child:02}"] = Choice(options=list(np.r_[0:2*np.pi:np.pi/2]))
+            vars[f"x{child:02}"] = Choice(options=list(np.r_[0:4*np.pi:np.pi]))
         self.x = vars
         
         super().__init__(vars=vars, n_ieq_constr=0, n_obj=1, **kwargs)

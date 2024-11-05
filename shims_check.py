@@ -1,7 +1,7 @@
 import numpy as np
 import magpylib as magpy
 from make_shim_rings import make_shim_ring_template
-from utils import get_field_pos, display_scatter_3D, get_magnetic_field, load_magnets_with_rot, filter_dsv, cost_fn, write2stl
+from utils import get_field_pos, display_scatter_3D, get_magnetic_field, filter_dsv, cost_fn, undo_symmetry_8x_compression
 from colorama import Style, Fore
 from target_B0_2_shim_locations_rot import shimming_problem
 from pymoo.core.mixed import MixedVariableMating, MixedVariableGA, MixedVariableSampling, MixedVariableDuplicateElimination
@@ -14,10 +14,10 @@ import matplotlib.pyplot as plt
 import matplotlib
 
 # matplotlib.use('Qt5Agg')
-
-# Read magnetic field and positions
-# fname = './data/Tenacity_36_2mm.npy'
-fname = './data/Tenacity_36_2mm.npy'
+#---------------------------------------------------------
+# Read magnetic field and positions from field mapping robot
+#---------------------------------------------------------
+fname = './data/b Exp_36 36 36 2.npy'
 data = np.load(fname)
 resolution = 2 #mm
 x, y, z, B = get_field_pos(data)
@@ -27,8 +27,8 @@ y = (np.float64(y).transpose() - 0.5 * np.max(y)) * 1e-3 #conversion to m
 z = (np.float64(z).transpose() - 0.5 * np.max(z)) * 1e-3 #conversion to m
 B = B * 1e-3 # mT to T
 print('Mean value of B:' + str(np.mean(B)))
-dsv_radius = 16 * 1e-3 # m
-x, y, z, B = filter_dsv(x, y, z, B, dsv_radius = dsv_radius)
+dsv_radius = 18 * 1e-3 # m
+x, y, z, B = filter_dsv(x, y, z, B, dsv_radius = dsv_radius, symmetry=False)
 
 B_orig = B
 # Map robot space to magpy space
@@ -38,7 +38,6 @@ z_magpy = -y # height
 
 # Display measured field as scattered data - plot3
 display_scatter_3D(x_magpy, y_magpy, z_magpy, B, center=False, title = 'Measured B field')
-display_scatter_3D(x_magpy, y_magpy, z_magpy, B - np.mean(B), center=False, title = 'Measured B field - mean sub')
 print(Fore.RED + 'del B0: ' + str((np.max(B) - np.min(B)) * 1e3) + 'mT')
 print(Fore.CYAN + 'Off-resonance indicator before shimming is:' + str(np.round(cost_fn(B),2)) + ' DelB/B * 1000') # What decimal should we round off to? 1mT - 85kHz
 pos = np.zeros((x.shape[0], 3))
@@ -51,48 +50,40 @@ sensor1 = magpy.Sensor(position=pos,style_size=2)
 dsv_sensors.add(sensor1)
 print(Fore.GREEN + 'Done creating position sensors')
 
-# Specify geometry of the shim array - biplanar
-magnet_dims_x =  6.35 *1e-3 # m
-magnet_dims_y =  6.35 *1e-3 # m
-magnet_dims_z =  6.35 *1e-3 # m
-diameter = 60 * 1e-3 # m
-mag_x = 0
-mag_z = 8 * 1e5
-mag_y = 0
-magnetization = [mag_x, mag_y, mag_z] # 1.34, 0.7957
-heights = np.array([-41.325, 41.325]) * 1e-3
-num_magnets = 30
-delta_B0_tol = 1 * 1e-3 # Tesla
-
-# Create lower shim tray
-shim_rings_template = make_shim_ring_template(diameter, magnet_dims = (magnet_dims_x, magnet_dims_y, magnet_dims_z), 
-                                              heights = heights, num_magnets=num_magnets, magnetization=magnetization)
-shim_rings_template.show(backend='matplotlib')
-
-
-
-# Figure how to export this to CAD
+#---------------------------------------------------------
+# Open saved optimized shim tray
+# ---------------------------------------------------------
 with open('./data/magnet_collection_shims.pkl', 'rb') as file:
     shim_rings_optimized_read = pickle.load(file)
 shim_rings_optimized_read.show(background=True, backend='matplotlib')
 
+# ---------------------------------------------------------
+# Undo the symmetry compression 
+#---------------------------------------------------------
+shim_rings_optimized_uncompressed = undo_symmetry_8x_compression(shim_rings_optimized_read)
+shim_rings_optimized_uncompressed.show(background=True, backend='matplotlib')
 
-B0_computed = get_magnetic_field(magnets=shim_rings_optimized_read, sensors=dsv_sensors, axis = 2)
-B_total = B0_computed + B
+# ---------------------------------------------------------
+# Compute the B field from the optimized shim tray
+# ---------------------------------------------------------
+damping_fact =  0.35
+B0_computed = get_magnetic_field(magnets=shim_rings_optimized_uncompressed, sensors=dsv_sensors, axis = 2)
+B_total = damping_fact * B0_computed + B
 display_scatter_3D(x_magpy, y_magpy, z_magpy, B0_computed, center=False, title = 'B computed from optimized shim tray')
 display_scatter_3D(x_magpy, y_magpy, z_magpy, B_total, center=False, title = 'B + B0_computed')
 plt.show()
 print('Mean value of B_shimmed:' + str(np.mean(B_total)))
-print(Fore.RED + 'del B0: ' + str((np.max(B_total) - np.min(B_total)) * 1e3) + 'mT')
+print(Fore.RED + 'Del B0 post shimming: ' + str((np.max(B_total) - np.min(B_total)) * 1e3) + 'mT')
 print(Fore.CYAN + 'Off-resonance indicator before shimming is:' + str(np.round(cost_fn(B_total),2)) + ' DelB/B * 1000') # What decimal should we round off to? 1mT - 85kHz
 
 print('Percentage reduction in inhomogeneity:' + str(100 - np.round((np.max(B_total) - np.min(B_total)) / (np.max(B) - np.min(B)) * 100, 2)) + '%')
 
+# ---------------------------------------------------------
 # Visualize the B field from the shim trays once they are mapped
-shim_field_mapped = True
+# ---------------------------------------------------------
+shim_field_mapped = False
 if shim_field_mapped is True:
     fname_shim = './data/shim_tray_32_2mm_new.npy'
-    # fname_shim = './data/Exp_12_2024109.npy'
     data_shim = np.load(fname_shim)
     resolution = 8 #mm
     do_threshold = True
@@ -116,11 +107,8 @@ if shim_field_mapped is True:
 
     # Display measured field as scattered data - plot3
     display_scatter_3D(x_magpy, y_magpy, z_magpy, B_shim, center=False, title = 'Measured B shim field')
-    # display_scatter_3D(x_magpy, y_magpy, z_magpy, B + B_shim, center=False, title = 'Predicted total field - mapped')
-    # print(Fore.RED + 'del B0: ' + str((np.max(B + B_shim) - np.min(B + B_shim)) * 1e3) + 'mT')
-    # print(Fore.CYAN + 'Off-resonance indicator before shimming is:' + str(np.round(cost_fn(B_shim + B),2)) + ' DelB/B * 1000') # What decimal should we round off to? 1mT - 85kHz
-
-compute_shim_diff = True
+ 
+compute_shim_diff = False
 if compute_shim_diff:
         fname_shim = './data/Exp_15_2024109.npy'
         data = np.load(fname_shim)
