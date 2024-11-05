@@ -52,7 +52,7 @@ print(Fore.GREEN + 'Done creating position sensors')
 #---------------------------------------------------------
 magnet_dims_x =  6.35 *1e-3 # m
 magnet_dims_y =   6.35 *1e-3 # m
-magnet_dims_z =   6.35 *1e-3 # m
+magnet_dims_z =  0.5 *  6.35 *1e-3 # m
 diameter = 152.4 * 1e-3 # m
 mag_x = 0
 mag_z = 8 * 1e5
@@ -69,7 +69,7 @@ shim_rings_template_stl = make_shim_ring_template(diameter, magnet_dims = (magne
                                               style_color='red')
 shim_rings_template_stl.show(backend='matplotlib')
 
-write2stl(shim_rings_template_stl, stl_filename ='./data/init10_arrangement_dia_'+str(diameter * 1e3)+ '.stl', debug=False)
+write2stl(shim_rings_template_stl, stl_filename ='./data/init10_arrangement_single_dia_'+str(diameter * 1e3)+ '.stl', debug=False)
 shim_rings_template = make_shim_ring_template(diameter, magnet_dims = (magnet_dims_x, magnet_dims_y, magnet_dims_z), 
                                               heights = heights, num_magnets=num_magnets, magnetization=magnetization, symmetry = True,
                                               style_color='red')

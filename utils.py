@@ -208,7 +208,7 @@ def write2stl(mag_collection_template, stl_filename:str='output.stl', debug = Fa
                 cube_mesh = mesh.Mesh(np.zeros(faces.shape[0], dtype=mesh.Mesh.dtype))
                 for i, f in enumerate(faces):
                     for j in range(3):
-                        cube_mesh.vectors[i][j] = vertices_rotated[f[j]] * 1e3
+                        cube_mesh.vectors[i][j] = vertices_rotated[f[j]]
                         
                 if init > 0:
                     cube_mesh_all = mesh.Mesh(np.concatenate([cube_mesh_all.data, cube_mesh.data]))
