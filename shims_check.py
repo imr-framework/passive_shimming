@@ -37,7 +37,8 @@ y_magpy = x # depth
 z_magpy = -y # height
 
 # Display measured field as scattered data - plot3
-display_scatter_3D(x_magpy, y_magpy, z_magpy, B, center=False, title = 'Measured B field')
+delB = 0.002 # T
+display_scatter_3D(x_magpy, y_magpy, z_magpy, B, center=False, title = 'Measured B field', vmin = np.mean(B) -delB, vmax = np.mean(B)  + delB)
 print(Fore.RED + 'del B0: ' + str((np.max(B) - np.min(B)) * 1e3) + 'mT')
 print(Fore.CYAN + 'Off-resonance indicator before shimming is:' + str(np.round(cost_fn(B),2)) + ' DelB/B * 1000') # What decimal should we round off to? 1mT - 85kHz
 pos = np.zeros((x.shape[0], 3))
@@ -78,7 +79,7 @@ B_total = damping_fact * B0_computed + B
 display_scatter_3D(x_magpy, y_magpy, z_magpy, B0_computed, center=False, title = 'B computed from optimized shim tray')
 display_scatter_3D(x_magpy, y_magpy, z_magpy, B_total, center=False, title = 'B + B0_computed')
 plt.show()
-print('Mean value of B_shimmed:' + str(np.mean(B_total)))
+print('Mean value of predicted B_shimmed:' + str(np.mean(B_total)))
 print(Fore.RED + 'Del B0 post shimming: ' + str((np.max(B_total) - np.min(B_total)) * 1e3) + 'mT')
 print(Fore.CYAN + 'Off-resonance indicator before shimming is:' + str(np.round(cost_fn(B_total),2)) + ' DelB/B * 1000') # What decimal should we round off to? 1mT - 85kHz
 
@@ -87,32 +88,33 @@ print('Percentage reduction in inhomogeneity:' + str(100 - np.round((np.max(B_to
 # ---------------------------------------------------------
 # Visualize the B field from the shim trays once they are mapped
 # ---------------------------------------------------------
-shim_field_mapped = False
+shim_field_mapped = True
 if shim_field_mapped is True:
-    fname_shim = './data/shim_tray_64_4mm.npy'
+    fname_shim = './data/Exp_23_20241012.npy'
     data_shim = np.load(fname_shim)
-    resolution = 8 #mm
+    resolution = 4 #mm
     do_threshold = True
     x, y, z, B_shim = get_field_pos(data_shim)
     print(Fore.GREEN + 'Done reading data')
     x = (np.float64(x).transpose() - 0.5 * np.max(x))  * 1e-3 #conversion to m
     y = (np.float64(y).transpose() - 0.5 * np.max(y)) * 1e-3 #conversion to m
-    z = (np.float64(z).transpose() - 0.5 * np.max(z)) * 1e-3 #conversion to m
-    B_shim = -1 * B_shim * 1e-3 # mT to T
-    print('Mean value of B shim:' + str(np.mean(B_shim)))
+    z = (np.float64(z).transpose() - 0.5 * np.max(z)) * 1e-3 #conversion to m/
+    B_shim = B_shim * 1e-3 # mT to T
     dsv_radius = 16 * 1e-3 # m
-    x, y, z, B_shim = filter_dsv(x, y, z, B_shim, dsv_radius = dsv_radius)
+    x, y, z, B_shim = filter_dsv(x, y, z, B_shim, dsv_radius = dsv_radius, symmetry=False)
+    print('Mean value of B shim:' + str(np.mean(B_shim)))
 
-    if do_threshold is True:
-        B_shim[np.abs(B_shim) > 1] = 0
 
     # Map robot space to magpy space
     x_magpy = z # length
     y_magpy = x # depth
     z_magpy = -y # height
+    print(Fore.RED + 'Del B0 post shimming: ' + str((np.max(B_shim) - np.min(B_shim)) * 1e3) + 'mT')
+    print(Fore.CYAN + 'Off-resonance indicator before shimming is:' + str(np.round(cost_fn(B_shim),2)) + ' DelB/B * 1000') # What decimal should we round off to? 1mT - 85kHz
+    print('Percentage reduction in inhomogeneity:' + str(100 - np.round((np.max(B_shim) - np.min(B_shim)) / (np.max(B) - np.min(B)) * 100, 2)) + '%')
 
     # Display measured field as scattered data - plot3
-    display_scatter_3D(x_magpy, y_magpy, z_magpy, B_shim, center=False, title = 'Measured B shim field')
+    display_scatter_3D(x_magpy, y_magpy, z_magpy, B_shim, center=False, title = 'Measured B shim field', vmin = 0.265 -delB, vmax = 0.265 + delB)
  
 compute_shim_diff = False
 if compute_shim_diff:

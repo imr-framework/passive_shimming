@@ -21,7 +21,7 @@ def get_field_pos(data):
 
 
 
-def display_scatter_3D(x, y, z, B, center:bool=False, title:str=None, clim_plot = None):
+def display_scatter_3D(x, y, z, B, center:bool=False, title:str=None, clim_plot = None, vmin = 0.265, vmax = 0.271):
     
     if center is True:
         x = (x - 0.5 *  np.max(x)) 
@@ -30,7 +30,7 @@ def display_scatter_3D(x, y, z, B, center:bool=False, title:str=None, clim_plot 
     
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-    img = ax.scatter(x, y, z, c=B, cmap=plt.jet())
+    img = ax.scatter(x, y, z, c=B, cmap='coolwarm', vmin = vmin, vmax = vmax) #coolwarm
     plt.title(title)
     plt.colorbar(img)
     # cbar = fig.colorbar(img)
