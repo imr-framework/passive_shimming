@@ -53,19 +53,22 @@ print(Fore.GREEN + 'Done creating position sensors')
 #---------------------------------------------------------
 # Open saved optimized shim tray
 # ---------------------------------------------------------
-fname_pkl = './data/magnet_collection_shims_6inch_60mag.pkl'
-fname_pkl = './data/magnet_collection_shims.pkl'
+# fname_pkl = './data/magnet_collection_shims_6inch_60mag.pkl'
+fname_pkl = './data/magnet_collection_shims_pf2.pkl'
 with open(fname_pkl, 'rb') as file:
     shim_rings_optimized_read = pickle.load(file)
+write2stl(shim_rings_optimized_read, stl_filename ='./data/optimized_arrangement_dia_'+str(152.4 * 1e3)+ '.stl', debug=False)
 shim_rings_optimized_read.show(background=True, backend='matplotlib')
+
 
 # ---------------------------------------------------------
 # Undo the symmetry compression 
 #---------------------------------------------------------
 shim_rings_optimized_uncompressed = undo_symmetry_8x_compression(shim_rings_optimized_read)
 shim_rings_optimized_uncompressed.show(background=True, backend='matplotlib')
-visualize_shim_tray(shim_rings_optimized_uncompressed, tray='upper')
-# write2stl(shim_rings_optimized_read, stl_filename ='./data/init10_arrangement_dia_'+str(152.4 * 1e3)+ '.stl', debug=True)
+shim_tray_single = visualize_shim_tray(shim_rings_optimized_uncompressed, tray='upper')
+# write2stl(shim_tray_single, stl_filename ='./data/optimized_arrangement_dia_'+str(152.4 * 1e3)+ '.stl', debug=False)
+shim_tray_single.show(background=True, backend='matplotlib')
 # ---------------------------------------------------------
 # Compute the B field from the optimized shim tray
 # ---------------------------------------------------------

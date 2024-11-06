@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 from stl import mesh
+import math
 
 def get_field_pos(data):
     x = np.zeros(shape=(data.shape[0]))
@@ -176,25 +177,59 @@ def write2stl(mag_collection_template, stl_filename:str='output.stl', debug = Fa
         for child1 in range(len(mag_collection_template.children)): 
             cube_magnet = mag_collection_template.children[child1]
             mag_cuboid_trace = mag_collection_template.children[child1].get_trace()
-            vertices = np.array([mag_cuboid_trace['x'], mag_cuboid_trace['y'], mag_cuboid_trace['z']]).T + cube_magnet.orientation.apply(cube_magnet.position.T)
+            vertices = np.array([mag_cuboid_trace['x'], mag_cuboid_trace['y'], mag_cuboid_trace['z']]).T + cube_magnet.position.T  #cube_magnet.orientation.apply(cube_magnet.position.T)
+            
+            x = vertices[:, 0]
+            y = vertices[:, 1]
+            
+            # if np.min(x) < 0:
+            #     print('Negative x')
+            #     print(x)
+            #     x+= np.abs(np.min(x))
+            # if np.min(y) < 0:
+            #     print('Negative y')
+            #     print(y)
+            #     y+= 2 * np.abs(np.min(y))
+            
+            
             faces = np.array([mag_cuboid_trace['i'], mag_cuboid_trace['j'], mag_cuboid_trace['k']]).T
-            vertices_rotated = cube_magnet.orientation.apply(vertices)
-            cube_mesh = mesh.Mesh(np.zeros(faces.shape[0], dtype=mesh.Mesh.dtype))
-            for i, f in enumerate(faces):
-                for j in range(3):
-                    cube_mesh.vectors[i][j] = vertices_rotated[f[j]] * 1e3 # because stl printing is in mm
+            
+            rot_angle = math.radians(cube_magnet.orientation.as_euler('xyz', degrees=True)[2])
+            rot_matrix = np.array([
+                    [math.cos(rot_angle), -math.sin(rot_angle), 0],
+                    [math.sin(rot_angle), math.cos(rot_angle), 0],
+                    [0, 0, 1]
+                ])
+            vertices_rotated = np.dot(vertices, rot_matrix)  # because stl printing is in mm 
+            vertices_flipped_x = vertices_rotated * [-1, 1, 1]
+            vertices_flipped_y = vertices_rotated * [1, -1, 1]
+            vertices_flipped_xy = vertices_rotated * [-1, -1, 1]
+
+            cube_mesh =  make_mesh(faces, vertices_rotated)
+            cube_mesh_flipped_x = make_mesh(faces, vertices_flipped_x)
+            cube_mesh_flipped_y = make_mesh(faces, vertices_flipped_y)
+            cube_mesh_flipped_xy = make_mesh(faces, vertices_flipped_xy)
+                    
             if init > 0:
                 cube_mesh_all = mesh.Mesh(np.concatenate([cube_mesh_all.data, cube_mesh.data]))
+                cube_mesh_all = mesh.Mesh(np.concatenate([cube_mesh_all.data, cube_mesh_flipped_x.data]))
+                cube_mesh_all = mesh.Mesh(np.concatenate([cube_mesh_all.data, cube_mesh_flipped_y.data]))
+                cube_mesh_all = mesh.Mesh(np.concatenate([cube_mesh_all.data, cube_mesh_flipped_xy.data]))
             else:
                 init = 1 
                 cube_mesh_all = cube_mesh
+                cube_mesh_all = mesh.Mesh(np.concatenate([cube_mesh_all.data, cube_mesh_flipped_x.data]))
+                cube_mesh_all = mesh.Mesh(np.concatenate([cube_mesh_all.data, cube_mesh_flipped_y.data]))
+                cube_mesh_all = mesh.Mesh(np.concatenate([cube_mesh_all.data, cube_mesh_flipped_xy.data]))
+            if debug:
+                    cube_mesh_all.save(stl_filename)
     else:
         for child1 in range(len(mag_collection_template.children)):   
             for child2 in range(len(mag_collection_template.children[child1].children)): # assumes more than one plate
                 cube_magnet = mag_collection_template.children[child1].children[child2]
                 mag_cuboid_trace = mag_collection_template.children[child1].children[child2].get_trace()
 
-                vertices = np.array([mag_cuboid_trace['x'], mag_cuboid_trace['y'], mag_cuboid_trace['z']]).T  + cube_magnet.orientation.apply(cube_magnet.position.T)
+                vertices = np.array([mag_cuboid_trace['x'], mag_cuboid_trace['y'], mag_cuboid_trace['z']]).T  #+
                 faces = np.array([mag_cuboid_trace['i'], mag_cuboid_trace['j'], mag_cuboid_trace['k']]).T
                 vertices_rotated = cube_magnet.orientation.apply(vertices) * 1e3 # because stl printing is in mm
         
@@ -321,3 +356,14 @@ def visualize_shim_tray(shim_trays, tray:str='upper'):
 
     shim_tray_chosen.show(backend='matplotlib')
     return shim_tray_chosen
+
+def make_mesh(faces, vertices_rotated):
+# # ---------------------------------------------------------
+# # Open saved optimized shim tray
+# convert this into a function definition once it works
+    cube_mesh = mesh.Mesh(np.zeros(faces.shape[0], dtype=mesh.Mesh.dtype))
+    for i, f in enumerate(faces):
+        for j in range(3):
+            cube_mesh.vectors[i][j] = vertices_rotated[f[j]] * 1e3 # because stl printing is in mm
+            
+    return cube_mesh

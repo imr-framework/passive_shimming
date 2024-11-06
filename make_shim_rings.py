@@ -53,7 +53,7 @@ class shim_ring:
             else:
                 radius = r * (np.sqrt(self.magnet_dims[0] ** 2  +  self.magnet_dims[1] ** 2))
                 semi_circumference = np.pi * radius
-                num_magnets_ring = int(1 * np.floor(semi_circumference / self.magnet_dims[0]))
+                num_magnets_ring = int(1 * np.floor(semi_circumference / (1.25 * self.magnet_dims[0])))
                 # num_magnets_ring = int(2 * radius / self.magnet_dims[0])
                 total_num_magnets_ring += num_magnets_ring
                 angles = np.linspace(0, 360, num_magnets_ring, endpoint=False)
