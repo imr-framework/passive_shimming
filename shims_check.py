@@ -1,7 +1,7 @@
 import numpy as np
 import magpylib as magpy
 from make_shim_rings import make_shim_ring_template
-from utils import get_field_pos, display_scatter_3D, get_magnetic_field, filter_dsv, cost_fn, undo_symmetry_8x_compression,write2stl
+from utils import get_field_pos, display_scatter_3D, get_magnetic_field, filter_dsv, cost_fn, undo_symmetry_8x_compression,write2stl, visualize_shim_tray
 from colorama import Style, Fore
 from target_B0_2_shim_locations_rot import shimming_problem
 from pymoo.core.mixed import MixedVariableMating, MixedVariableGA, MixedVariableSampling, MixedVariableDuplicateElimination
@@ -19,7 +19,7 @@ import matplotlib
 #---------------------------------------------------------
 fname = './data/Exp_21_20241012.npy'
 data = np.load(fname)
-resolution = 2 #mm
+resolution = 4 #mm
 x, y, z, B = get_field_pos(data)
 print(Fore.GREEN + 'Done reading data')
 x = (np.float64(x).transpose() - 0.5 * np.max(x))  * 1e-3 #conversion to m
@@ -53,7 +53,9 @@ print(Fore.GREEN + 'Done creating position sensors')
 #---------------------------------------------------------
 # Open saved optimized shim tray
 # ---------------------------------------------------------
-with open('./data/magnet_collection_shims.pkl', 'rb') as file:
+fname_pkl = './data/magnet_collection_shims_6inch_60mag.pkl'
+fname_pkl = './data/magnet_collection_shims.pkl'
+with open(fname_pkl, 'rb') as file:
     shim_rings_optimized_read = pickle.load(file)
 shim_rings_optimized_read.show(background=True, backend='matplotlib')
 
@@ -62,11 +64,12 @@ shim_rings_optimized_read.show(background=True, backend='matplotlib')
 #---------------------------------------------------------
 shim_rings_optimized_uncompressed = undo_symmetry_8x_compression(shim_rings_optimized_read)
 shim_rings_optimized_uncompressed.show(background=True, backend='matplotlib')
+visualize_shim_tray(shim_rings_optimized_uncompressed, tray='upper')
 # write2stl(shim_rings_optimized_read, stl_filename ='./data/init10_arrangement_dia_'+str(152.4 * 1e3)+ '.stl', debug=True)
 # ---------------------------------------------------------
 # Compute the B field from the optimized shim tray
 # ---------------------------------------------------------
-damping_fact =  0.35
+damping_fact =  1 #0.35
 B0_computed = get_magnetic_field(magnets=shim_rings_optimized_uncompressed, sensors=dsv_sensors, axis = 2)
 B_total = damping_fact * B0_computed + B
 display_scatter_3D(x_magpy, y_magpy, z_magpy, B0_computed, center=False, title = 'B computed from optimized shim tray')

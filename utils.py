@@ -299,3 +299,25 @@ def undo_symmetry_8x_compression(mag_collection):
             
             
     return mag_collection_uncompressed
+
+def visualize_shim_tray(shim_trays, tray:str='upper'):
+    if tray == 'upper':
+        shim_tray_upper = magpy.Collection()
+        for child in range(len(shim_trays)):
+            cube_magnet = shim_trays[child].copy()
+            if cube_magnet.position[2] >= 0:
+                cube_magnet.style_color = 'green'
+                shim_tray_upper.add(cube_magnet)
+        shim_tray_chosen = shim_tray_upper
+       
+    elif tray == 'lower':
+        shim_tray_lower = magpy.Collection()
+        for child in range(len(shim_trays.children[0].children)):
+            cube_magnet = shim_trays.children[0].children[child].copy()
+            if cube_magnet.position[2] < 0:
+                cube_magnet.style_color = 'blue'
+                shim_tray_lower.add(cube_magnet)
+        shim_tray_chosen = shim_tray_lower
+
+    shim_tray_chosen.show(backend='matplotlib')
+    return shim_tray_chosen
