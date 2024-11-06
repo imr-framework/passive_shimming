@@ -89,7 +89,7 @@ print('Percentage reduction in inhomogeneity:' + str(100 - np.round((np.max(B_to
 # ---------------------------------------------------------
 shim_field_mapped = False
 if shim_field_mapped is True:
-    fname_shim = './data/shim_tray_32_2mm_new.npy'
+    fname_shim = './data/shim_tray_64_4mm.npy'
     data_shim = np.load(fname_shim)
     resolution = 8 #mm
     do_threshold = True
