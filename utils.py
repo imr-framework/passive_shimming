@@ -30,14 +30,20 @@ def display_scatter_3D(x, y, z, B, center:bool=False, title:str=None, clim_plot 
     
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-    img = ax.scatter(x, y, z, c=B, cmap='coolwarm', vmin = vmin, vmax = vmax) #coolwarm
+    img = ax.scatter(x * 1e3, y * 1e3, z * 1e3, c=B, cmap='jet', vmin = vmin, vmax = vmax) #coolwarm
+    
+    # # Add a colorbar
+    # cbar = plt.colorbar(img)
+
+    # # Set the ticks on the colorbar
+    # cbar.set_ticks([vmin, 0, vmax])
+    
     plt.title(title)
     plt.colorbar(img)
-    # cbar = fig.colorbar(img)
-    # if clim_plot is None:
-    #     cbar.ax.set_ylim(0.95 * np.mean(B),1.05 * np.mean(B))
-    # else:
-    #     cbar.ax.set_ylim(clim_plot[0],clim_plot[1])
+    plt.xticks([-16, 0, 16])
+    plt.yticks([-16, 0, 16])
+    ax.set_zticks([-16, 0, 16])
+    # plt.axis('off')
     plt.show()
 
 def scale_wrt_meas(B_eff, scaling_factor):
