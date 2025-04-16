@@ -24,7 +24,7 @@ y = (np.float64(y).transpose() - 0.5 * np.max(y)) * 1e-3 #conversion to m
 z = (np.float64(z).transpose() - 0.5 * np.max(z)) * 1e-3 #conversion to m
 B = B * 1e-3 # mT to T
 
-dsv_radius = 32 * 1e-3 # m
+dsv_radius = 16 * 1e-3 # m
 x, y, z, B = filter_dsv(x, y, z, B, dsv_radius = dsv_radius, symmetry = True)
 
 # Map robot space to magpy space
