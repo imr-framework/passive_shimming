@@ -14,7 +14,7 @@ import time
 #---------------------------------------------------------
 # Read magnetic field and positions
 #---------------------------------------------------------
-fname = './data/Exp_21_20241012.npy'
+fname = './passive_shimming/data/Exp_21_20241012.npy'
 data = np.load(fname)
 resolution = 4 #mm
 x, y, z, B = get_field_pos(data)
