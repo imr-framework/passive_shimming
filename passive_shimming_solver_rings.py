@@ -129,6 +129,7 @@ with open('./data/magnet_collection_shims.pkl', 'wb') as file:
     pickle.dump(shim_rings_optimized, file)
 # Figure how to export this to CAD
 # Check if the shim tray can be loaded and displayed
+
 with open('./data/magnet_collection_shims.pkl', 'rb') as file:
     shim_rings_optimized_read = pickle.load(file)
 shim_rings_optimized_read.show()
