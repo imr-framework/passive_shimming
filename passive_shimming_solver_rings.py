@@ -24,7 +24,7 @@ y = (np.float64(y).transpose() - 0.5 * np.max(y)) * 1e-3 #conversion to m
 z = (np.float64(z).transpose() - 0.5 * np.max(z)) * 1e-3 #conversion to m
 B = B * 1e-3 # mT to T
 
-dsv_radius = 16 * 1e-3 # m
+dsv_radius = 32 * 1e-3 # m
 x, y, z, B = filter_dsv(x, y, z, B, dsv_radius = dsv_radius, symmetry = True)
 
 # Map robot space to magpy space
@@ -129,6 +129,7 @@ with open('./data/magnet_collection_shims.pkl', 'wb') as file:
     pickle.dump(shim_rings_optimized, file)
 # Figure how to export this to CAD
 # Check if the shim tray can be loaded and displayed
+
 with open('./data/magnet_collection_shims.pkl', 'rb') as file:
     shim_rings_optimized_read = pickle.load(file)
 shim_rings_optimized_read.show()
