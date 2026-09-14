@@ -3,21 +3,29 @@ import magpylib as magpy
 # from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 import numpy as np
+from plotly import data
 from scipy.spatial.transform import Rotation as R
 from stl import mesh
 import math
+import trimesh
 
 def get_field_pos(data):
-    x = np.zeros(shape=(data.shape[0]))
-    y = np.zeros(shape=(data.shape[0]))
-    z = np.zeros(shape=(data.shape[0]))
-    B = np.zeros(shape=(data.shape[0]))
-    for n in range(data.shape[0]):
-            x[n] = (np.squeeze(data[n, 0]))
-            y[n] = (np.squeeze(data[n, 1]))
-            z[n] = (np.squeeze(data[n, 2]))
-            B[n] = (np.squeeze(data[n, 3]))
-    return x, y, z, B
+    #  data = np.loadtxt(fmr_filename, delimiter=',', skiprows=1)
+    x = data[:, 0]
+    y = data[:, 1]
+    z = data[:, 2]
+    B = data[:, 3]
+    if data.shape[1] > 4:
+        V = data[:, 4]
+        dx = data[:, 5]
+        dy = data[:, 6]
+        dz = data[:, 7]
+    else:
+        V = None
+        dx = None
+        dy = None
+        dz = None
+    return x, y, z, B, V, dx, dy, dz
 
 
 
@@ -40,9 +48,12 @@ def display_scatter_3D(x, y, z, B, center:bool=False, title:str=None, clim_plot 
     
     plt.title(title)
     plt.colorbar(img)
-    plt.xticks([-16, 0, 16])
-    plt.yticks([-16, 0, 16])
-    ax.set_zticks([-16, 0, 16])
+    plt.xticks([-np.max(x * 1e3), 0, np.max(x * 1e3)])
+    plt.yticks([-np.max(y * 1e3), 0, np.max(y * 1e3)])
+    ax.set_zticks([-np.max(z * 1e3), 0, np.max(z * 1e3)])
+    plt.xlabel('X (mm)')
+    plt.ylabel('Y (mm)')
+    ax.set_zlabel('Z (mm)')
     # plt.axis('off')
     plt.show()
 
@@ -55,14 +66,41 @@ def scale_wrt_meas(B_eff, scaling_factor):
         return B_eff_scaled
 
 
-def get_magnetic_field(magnets, sensors, axis = None, scaling_factor = 0.25):
-    B = sensors.getB(magnets)
+# def get_magnetic_field(magnets, sensors, axis = None, scaling_factor = 0.25):
+#     B = sensors.getB(magnets)
+#     if axis is None:
+#         B_eff = np.linalg.norm(B, axis=1)
+#     else:
+#         B_eff = np.squeeze(B[:, axis]) 
+#         B_eff = scale_wrt_meas(B_eff, scaling_factor)
+#     return B_eff
+
+def get_magnetic_field(
+    magnets,
+    sensors,
+    axis=None,
+    scaling_factor=None,
+):
+    B = np.asarray(
+        sensors.getB(magnets),
+        dtype=float,
+    )
+
     if axis is None:
-        B_eff = np.linalg.norm(B, axis=1)
-    else:
-        B_eff = np.squeeze(B[:, axis]) 
-        B_eff = scale_wrt_meas(B_eff, scaling_factor)
-    return B_eff
+        return np.linalg.norm(
+            B,
+            axis=-1,
+        ).reshape(-1)
+
+    if axis not in (0, 1, 2):
+        raise ValueError(
+            "axis must be None, 0, 1, or 2."
+        )
+
+    return np.asarray(
+        B[..., axis],
+        dtype=float,
+    ).reshape(-1)
     
 def load_magnets_in_rings(x, shims, num_var, magnetization):
     binary_placement_each_mag=np.array([x[f"x{child:02}"] for child in range(0, num_var * len(shims.children) * len(shims.children[0].children))]) # all children should have same magnet positions to begin with
@@ -171,8 +209,19 @@ def filter_dsv(x, y, z, B, dsv_radius, symmetry = True):
     
     return x_new, y_new, z_new, B_new
 
-def cost_fn(B_total):
-    f = 1e3 * (np.max(B_total) - np.min(B_total)) /(np.mean(B_total))
+def cost_fn(B_total,w1=0.8, w2=0.2):
+    # f = 1e3 * (np.max(B_total) - np.min(B_total)) /(np.mean(B_total))
+
+    mean_B = np.abs(np.mean(B_total))
+
+    f_std = (np.std(B_total) / mean_B) * 1e6 # ppm
+
+    f_range = 1e6 * (
+        np.percentile(B_total, 99)
+        - np.percentile(B_total, 1)
+    ) / mean_B
+
+    f = w1 * f_std + w2 * f_range
     return f
 
 def write2stl(mag_collection_template, stl_filename:str='output.stl', debug = False):
@@ -373,3 +422,292 @@ def make_mesh(faces, vertices_rotated):
             cube_mesh.vectors[i][j] = vertices_rotated[f[j]] * 1e3 # because stl printing is in mm
             
     return cube_mesh
+
+
+#---------------------------------------------------------
+# Write the two trays as meshes.
+#
+# The holes are cut from a disk rather than exporting the
+# magnetic cuboids themselves, so the resulting STL is the
+# tray that has to be manufactured.
+#---------------------------------------------------------
+
+
+def _cuboid_mesh(magnet):
+
+    position = np.asarray(
+        magnet.position,
+        dtype=float
+    )
+
+    dimension = np.asarray(
+        magnet.dimension,
+        dtype=float
+    ).copy()
+
+    # Make cutter extend completely through tray.
+    # Add some margin to avoid coplanar Boolean faces.
+    dimension[2] = max(
+        dimension[2],
+        disk_thickness + 0.002
+    )
+
+    # Box is initially centered at (0,0,0)
+    mesh = trimesh.creation.box(
+        extents=dimension
+    )
+
+    # Rotate about its own center
+    if magnet.orientation is not None:
+
+        transform = np.eye(4)
+
+        transform[:3, :3] = (
+            magnet.orientation.as_matrix()
+        )
+
+        mesh.apply_transform(
+            transform
+        )
+
+    # THEN move it to the magnet XY location
+    mesh.apply_translation(
+        [
+            position[0],
+            position[1],
+            0.0
+        ]
+    )
+
+    return mesh
+
+
+def _polarity_marks(magnet, tray_side):
+    """
+    Return an engraved '+' marker ONLY for magnets whose
+    magnetization arrow points in the global +Z direction.
+
+    Convention:
+        arrow points UP   (+Z) -> engrave "+"
+        arrow points DOWN (-Z) -> no mark
+
+    Note:
+        magnet.magnetization is defined in the magnet's LOCAL
+        coordinate system. Magpylib's displayed arrow includes
+        magnet.orientation, so the magnetization must first be
+        transformed into GLOBAL coordinates before testing its
+        Z direction.
+
+    tray_side is retained in the function signature so that the
+    rest of the code can remain unchanged, but it is intentionally
+    NOT used to determine polarity.
+    """
+
+    position = np.asarray(
+        magnet.position,
+        dtype=float
+    )
+
+    # ---------------------------------------------------------
+    # Determine GLOBAL magnetization direction
+    # ---------------------------------------------------------
+    magnetization_local = np.asarray(
+        magnet.magnetization,
+        dtype=float
+    )
+
+    if magnet.orientation is not None:
+        magnetization_global = magnet.orientation.apply(
+            magnetization_local
+        )
+    else:
+        magnetization_global = magnetization_local.copy()
+
+    # Arrow pointing upward in Magpylib means global +Z
+    is_positive = magnetization_global[2] > 0
+
+    # ---------------------------------------------------------
+    # NEGATIVE magnet:
+    # no polarity engraving at all
+    # ---------------------------------------------------------
+    if not is_positive:
+        return []
+
+    # ---------------------------------------------------------
+    # Positive magnet from here onward:
+    # create a "+" engraving
+    # ---------------------------------------------------------
+
+    # Determine radial direction from center of tray
+    radial = position[:2].copy()
+    radial_norm = np.linalg.norm(radial)
+
+    if radial_norm > 0:
+        radial /= radial_norm
+    else:
+        radial = np.array([1.0, 0.0])
+
+    # Tangential direction, perpendicular to radial
+    tangent = np.array([
+        -radial[1],
+        radial[0]
+    ])
+
+    # ---------------------------------------------------------
+    # Place "+" just outside the magnet pocket
+    # ---------------------------------------------------------
+    magnet_dims = np.asarray(
+        magnet.dimension,
+        dtype=float
+    )
+
+    magnet_half_width = (
+        max(magnet_dims[:2]) / 2
+    )
+
+    # Distance between magnet edge and '+' symbol
+    symbol_gap = 0.0020  # 2 mm
+
+    symbol_center_xy = (
+        position[:2]
+        + radial
+        * (
+            magnet_half_width
+            + symbol_gap
+        )
+    )
+
+    # ---------------------------------------------------------
+    # Symbol dimensions
+    # ---------------------------------------------------------
+    symbol_length = 0.0030      # 3.0 mm
+    symbol_width = 0.0007       # 0.7 mm
+    engraving_depth = 0.0006    # 0.6 mm
+
+    # Put cutter into upper surface of tray.
+    #
+    # Tray extends:
+    #   -disk_thickness/2 ... +disk_thickness/2
+    #
+    # The cutter overlaps the top surface by engraving_depth.
+    cutter_z = (
+        disk_thickness / 2
+        - engraving_depth / 2
+    )
+
+    marks = []
+
+    # ---------------------------------------------------------
+    # Helper: make one rectangular engraving bar
+    # ---------------------------------------------------------
+    def make_bar(center_xy, direction, length):
+
+        # Rectangle initially lies along local X axis
+        bar = trimesh.creation.box(
+            extents=[
+                length,
+                symbol_width,
+                engraving_depth * 2
+            ]
+        )
+
+        # Rotate bar into requested XY direction
+        angle = np.arctan2(
+            direction[1],
+            direction[0]
+        )
+
+        rotation = (
+            trimesh.transformations.rotation_matrix(
+                angle,
+                [0, 0, 1]
+            )
+        )
+
+        bar.apply_transform(rotation)
+
+        bar.apply_translation([
+            center_xy[0],
+            center_xy[1],
+            cutter_z
+        ])
+
+        return bar
+
+    # ---------------------------------------------------------
+    # Positive polarity:
+    # create BOTH bars of the "+"
+    # ---------------------------------------------------------
+
+    # Tangential bar
+    marks.append(
+        make_bar(
+            symbol_center_xy,
+            tangent,
+            symbol_length
+        )
+    )
+
+    # Radial bar
+    marks.append(
+        make_bar(
+            symbol_center_xy,
+            radial,
+            symbol_length
+        )
+    )
+
+    return marks
+
+
+def _write_tray(
+    collection,
+    filename,
+    tray_side,
+    disk_dia,
+    disk_thickness
+):
+
+    tray = trimesh.creation.cylinder(
+        radius=disk_dia / 2,
+        height=disk_thickness,
+        sections=128
+    )
+
+    cutters = []
+
+    for magnet in collection:
+
+        cutters.append(
+            _cuboid_mesh(
+                magnet
+            )
+        )
+
+        cutters.extend(
+            _polarity_marks(
+                magnet,
+                tray_side
+            )
+        )
+
+    for cutter in cutters:
+
+        result = (
+            trimesh.boolean.difference(
+                [
+                    tray,
+                    cutter
+                ],
+                engine=None
+            )
+        )
+
+        if result is not None:
+            tray = result
+
+    tray.export(
+        filename
+    )
+
+
