@@ -7,6 +7,7 @@ from plotly import data
 from scipy.spatial.transform import Rotation as R
 from stl import mesh
 import math
+import trimesh
 
 def get_field_pos(data):
     #  data = np.loadtxt(fmr_filename, delimiter=',', skiprows=1)
@@ -19,7 +20,6 @@ def get_field_pos(data):
         dx = data[:, 5]
         dy = data[:, 6]
         dz = data[:, 7]
-
     else:
         V = None
         dx = None
@@ -66,14 +66,41 @@ def scale_wrt_meas(B_eff, scaling_factor):
         return B_eff_scaled
 
 
-def get_magnetic_field(magnets, sensors, axis = None, scaling_factor = 0.25):
-    B = sensors.getB(magnets)
+# def get_magnetic_field(magnets, sensors, axis = None, scaling_factor = 0.25):
+#     B = sensors.getB(magnets)
+#     if axis is None:
+#         B_eff = np.linalg.norm(B, axis=1)
+#     else:
+#         B_eff = np.squeeze(B[:, axis]) 
+#         B_eff = scale_wrt_meas(B_eff, scaling_factor)
+#     return B_eff
+
+def get_magnetic_field(
+    magnets,
+    sensors,
+    axis=None,
+    scaling_factor=None,
+):
+    B = np.asarray(
+        sensors.getB(magnets),
+        dtype=float,
+    )
+
     if axis is None:
-        B_eff = np.linalg.norm(B, axis=1)
-    else:
-        B_eff = np.squeeze(B[:, axis]) 
-        B_eff = scale_wrt_meas(B_eff, scaling_factor)
-    return B_eff
+        return np.linalg.norm(
+            B,
+            axis=-1,
+        ).reshape(-1)
+
+    if axis not in (0, 1, 2):
+        raise ValueError(
+            "axis must be None, 0, 1, or 2."
+        )
+
+    return np.asarray(
+        B[..., axis],
+        dtype=float,
+    ).reshape(-1)
     
 def load_magnets_in_rings(x, shims, num_var, magnetization):
     binary_placement_each_mag=np.array([x[f"x{child:02}"] for child in range(0, num_var * len(shims.children) * len(shims.children[0].children))]) # all children should have same magnet positions to begin with
@@ -182,8 +209,19 @@ def filter_dsv(x, y, z, B, dsv_radius, symmetry = True):
     
     return x_new, y_new, z_new, B_new
 
-def cost_fn(B_total):
-    f = 1e3 * (np.max(B_total) - np.min(B_total)) /(np.mean(B_total))
+def cost_fn(B_total,w1=0.8, w2=0.2):
+    # f = 1e3 * (np.max(B_total) - np.min(B_total)) /(np.mean(B_total))
+
+    mean_B = np.abs(np.mean(B_total))
+
+    f_std = (np.std(B_total) / mean_B) * 1e6 # ppm
+
+    f_range = 1e6 * (
+        np.percentile(B_total, 99)
+        - np.percentile(B_total, 1)
+    ) / mean_B
+
+    f = w1 * f_std + w2 * f_range
     return f
 
 def write2stl(mag_collection_template, stl_filename:str='output.stl', debug = False):
@@ -625,7 +663,9 @@ def _polarity_marks(magnet, tray_side):
 def _write_tray(
     collection,
     filename,
-    tray_side
+    tray_side,
+    disk_dia,
+    disk_thickness
 ):
 
     tray = trimesh.creation.cylinder(

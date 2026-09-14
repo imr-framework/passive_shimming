@@ -21,12 +21,16 @@ import time
 #---------------------------------------------------------
 # Read magnetic field and positions
 #---------------------------------------------------------
-fname = './data/Exp_1033_2026824.npy'
+fname = './data/Exp_1042_2026827.npy'
+# fname = './data/Exp_21_20241012.npy'
 data = np.load(fname)
 resolution = 4 #mm
 x, y, z, B, V, dx, dy, dz = get_field_pos(data)
 print(x.shape, y.shape, z.shape, B.shape, V.shape)
-
+print('Mean B:', np.mean(B), 'mT')
+print('Standard Deviation B:', np.std(B), 'mT')
+print('CV B:', np.std(B)/np.mean(B)*100, '%')
+print('Delta B:', np.max(B) - np.min(B), 'mT')
 plt.plot(B, color='blue')
 plt.xlabel('Index')
 plt.ylabel('B (mT)')
